@@ -30,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
           "returnType": "json",
           "numOfRows": 40,
           "pageNo": 1,
-          "sidoName": "부산",
+          "sidoName": "전국",
           "ver": "1.0"
         });
     print(response.data["response"]["body"]["items"]);
