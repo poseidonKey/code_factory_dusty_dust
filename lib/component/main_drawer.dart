@@ -2,8 +2,13 @@ import 'package:f_test/const/colors.dart';
 import 'package:f_test/const/regions.dart';
 import 'package:flutter/material.dart';
 
+typedef OnRegionTab = void Function(String region);
+
 class MainDrawer extends StatelessWidget {
-  const MainDrawer({super.key});
+  final String selectedRegion;
+  final OnRegionTab onRegionTab;
+  const MainDrawer(
+      {super.key, required this.onRegionTab, required this.selectedRegion});
 
   @override
   Widget build(BuildContext context) {
@@ -20,10 +25,12 @@ class MainDrawer extends StatelessWidget {
           ...regions
               .map((e) => ListTile(
                     tileColor: Colors.white,
-                    selected: true,
+                    selected: e == selectedRegion,
                     selectedColor: Colors.black,
                     selectedTileColor: lightColor,
-                    onTap: () {},
+                    onTap: () {
+                      onRegionTab(e);
+                    },
                     title: Text(e),
                   ))
               .toList(),
