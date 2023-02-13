@@ -1,4 +1,3 @@
-import 'package:f_test/const/colors.dart';
 import 'package:f_test/const/regions.dart';
 import 'package:flutter/material.dart';
 
@@ -7,8 +6,15 @@ typedef OnRegionTab = void Function(String region);
 class MainDrawer extends StatelessWidget {
   final String selectedRegion;
   final OnRegionTab onRegionTab;
-  const MainDrawer(
-      {super.key, required this.onRegionTab, required this.selectedRegion});
+  final Color lightColor;
+  final Color darkColor;
+  const MainDrawer({
+    super.key,
+    required this.onRegionTab,
+    required this.selectedRegion,
+    required this.lightColor,
+    required this.darkColor,
+  });
 
   @override
   Widget build(BuildContext context) {

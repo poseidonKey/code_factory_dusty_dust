@@ -7,11 +7,16 @@ class MainAppBar extends StatelessWidget {
   final StatusModel status; // 가공한 모델링 데이터
   final StatModel stat; //원시 데이터
   final String region;
-  const MainAppBar(
-      {super.key,
-      required this.status,
-      required this.stat,
-      required this.region});
+  final DateTime dateTime;
+  final bool isExpanded;
+  const MainAppBar({
+    super.key,
+    required this.status,
+    required this.stat,
+    required this.region,
+    required this.dateTime,
+    required this.isExpanded,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +27,12 @@ class MainAppBar extends StatelessWidget {
     return SliverAppBar(
       backgroundColor: status.primaryColor,
       expandedHeight: 500,
+      pinned: true,
+      centerTitle: true,
+      title: isExpanded
+          ? null
+          : Text(
+              "$region ${DataUtils.getTimeFromDateTime(dateTime: dateTime)}"),
       flexibleSpace: FlexibleSpaceBar(
         background: SafeArea(
           child: Container(
