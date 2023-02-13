@@ -8,6 +8,7 @@ import 'package:f_test/model/stat_model.dart';
 import 'package:f_test/repository/stat_repository.dart';
 import 'package:f_test/utils/data_utils.dart';
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -34,32 +35,66 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<Map<ItemCode, List<StatModel>>> fetchData() async {
-    Map<ItemCode, List<StatModel>> stats = {};
+    // Map<ItemCode, List<StatModel>> stats = {};
     List<Future> futures = [];
     for (ItemCode itemCode in ItemCode.values) {
-      if (itemCode == ItemCode.PM10 ||
-          itemCode == ItemCode.PM25 ||
-          itemCode == ItemCode.SO2) {
-        futures.add(
-          StatRepository.fetchData(itemCode: itemCode),
-        );
-        // final statModels = await StatRepository.fetchData(itemCode: itemCode);
-        // stats.addAll({itemCode: statModels});
-      }
+      futures.add(
+        StatRepository.fetchData(itemCode: itemCode),
+      );
+      // if (itemCode == ItemCode.PM10 ||
+      //     itemCode == ItemCode.PM25 ||
+      //     itemCode == ItemCode.SO2) {
+      //   futures.add(
+      //     StatRepository.fetchData(itemCode: itemCode),
+      //   );
+      // final statModels = await StatRepository.fetchData(itemCode: itemCode);
+      // stats.addAll({itemCode: statModels});
+      // }
     }
 
     final results = await Future.wait(futures);
-    ItemCode key = ItemCode.PM10;
-    var value = results[0];
-    stats.addAll({key: value});
-    key = ItemCode.PM25;
-    value = results[1];
-    stats.addAll({key: value});
-    key = ItemCode.SO2;
-    value = results[1];
-    stats.addAll({key: value});
 
-    return stats;
+    // raw  데이터 모으기
+    // ItemCode key = ItemCode.PM10;
+    // var value = results[0];
+    // final box = Hive.box<StatModel>(key.name);
+    // for (StatModel stat in value) {
+    //   box.put(stat.dataTime.toString(), stat);
+    // }
+    // key = ItemCode.PM25;
+    // value = results[1];
+    // for (StatModel stat in value) {
+    //   box.put(stat.dataTime.toString(), stat);
+    // }
+    // key = ItemCode.SO2;
+    // value = results[2];
+    // for (StatModel stat in value) {
+    //   box.put(stat.dataTime.toString(), stat);
+    // }
+    for (int i = 0; i < results.length; i++) {
+      // ItemCode
+      final key = ItemCode.values[i];
+      // List<StatModel>
+      final value = results[i];
+
+      final box = Hive.box<StatModel>(key.name);
+
+      for (StatModel stat in value) {
+        box.put(stat.dataTime.toString(), stat);
+      }
+    }
+
+    return ItemCode.values.fold<Map<ItemCode, List<StatModel>>>({},
+        (previousValue, itemCode) {
+      final box = Hive.box<StatModel>(itemCode.name);
+
+      previousValue.addAll({
+        itemCode: box.values.toList(),
+      });
+      return previousValue;
+    });
+
+    // return stats;
     // final statModels = await StatRepository.fetchData();
     // return statModels;
     // print(statModels);
