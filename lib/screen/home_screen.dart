@@ -1,14 +1,13 @@
-import 'package:f_test/component/category_card.dart';
-import 'package:f_test/component/hourly_card.dart';
 import 'package:f_test/component/main_app_bar.dart';
 import 'package:f_test/component/main_drawer.dart';
 import 'package:f_test/const/regions.dart';
-import 'package:f_test/model/stat_and_status_model.dart';
 import 'package:f_test/model/stat_model.dart';
 import 'package:f_test/repository/stat_repository.dart';
 import 'package:f_test/utils/data_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../container/category_card.dart';
+import '../container/hourly_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,6 +24,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     scrollController.addListener(scrollListener);
+    fetchData();
   }
 
   @override
@@ -34,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  Future<Map<ItemCode, List<StatModel>>> fetchData() async {
+  Future<void> fetchData() async {
     // Map<ItemCode, List<StatModel>> stats = {};
     List<Future> futures = [];
     for (ItemCode itemCode in ItemCode.values) {
@@ -82,17 +82,13 @@ class _HomeScreenState extends State<HomeScreen> {
       for (StatModel stat in value) {
         box.put(stat.dataTime.toString(), stat);
       }
+
+      final allKeys = box.values.toList();
+      if (allKeys.length > 24) {
+        final deleteKey = allKeys.sublist(0, allKeys.length - 24);
+        box.deleteAll(deleteKey);
+      }
     }
-
-    return ItemCode.values.fold<Map<ItemCode, List<StatModel>>>({},
-        (previousValue, itemCode) {
-      final box = Hive.box<StatModel>(itemCode.name);
-
-      previousValue.addAll({
-        itemCode: box.values.toList(),
-      });
-      return previousValue;
-    });
 
     // return stats;
     // final statModels = await StatRepository.fetchData();
@@ -178,105 +174,76 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<Map<ItemCode, List<StatModel>>>(
-        future: fetchData(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return const Scaffold(
-              body: Center(
-                child: Text("Error"),
-              ),
-            );
-          }
-          if (!snapshot.hasData) {
-            return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-
-          Map<ItemCode, List<StatModel>> stats = snapshot.data!;
-          StatModel pm10RecentStat = stats[ItemCode.PM10]![0];
-          // 최근 미세먼지만..
-          final status = DataUtils.getStatusFromItemCodeAndValue(
-            value: pm10RecentStat.seoul,
-            itemCode: ItemCode.PM10,
-          );
-          final ssModel = stats.keys.map((key) {
-            final value = stats[key]!;
-            final stat = value[0];
-            return StatAndStatusModel(
-              itemCode: key,
-              status: DataUtils.getStatusFromItemCodeAndValue(
-                  value: stat.getLevelFromRegion(region), itemCode: key),
-              stat: stat,
-            );
-          });
-          return Scaffold(
-              drawer: MainDrawer(
-                selectedRegion: region,
-                onRegionTab: (String region) {
-                  setState(() {
-                    this.region = region;
-                  });
-                  Navigator.of(context).pop();
-                },
-                darkColor: status.darkColor,
-                lightColor: status.lightColor,
-              ),
-              // backgroundColor: primaryColor,
-              body: Container(
-                color: status.primaryColor,
-                child: CustomScrollView(
-                  controller: scrollController,
-                  slivers: [
-                    MainAppBar(
-                      isExpanded: isExpanded,
-                      stat: pm10RecentStat,
-                      status: status,
-                      region: region,
-                      dateTime: pm10RecentStat.dataTime,
-                    ),
-                    SliverToBoxAdapter(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          SizedBox(
-                            height: 160,
-                            child: CategoryCard(
-                              models: ssModel.toList(),
-                              region: region,
-                              darkColor: status.darkColor,
-                              lightColor: status.lightColor,
-                            ),
-                          ),
-                          const SizedBox(
-                            height: 16,
-                          ),
-                          ...stats.keys.map((itemCode) {
-                            final stat = stats[itemCode]!;
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: HourlyCard(
-                                region: region,
-                                category: DataUtils.getItemCodeKrString(
-                                    itemCode: itemCode),
-                                stats: stat,
-                                darkColor: status.darkColor,
-                                lightColor: status.lightColor,
-                              ),
-                            );
-                          }).toList(),
-                          const SizedBox(
-                            height: 16,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+    return ValueListenableBuilder<Box>(
+      valueListenable: Hive.box<StatModel>(ItemCode.PM10.name).listenable(),
+      builder: (context, box, widget) {
+        final recentStat = box.values.toList().last as StatModel;
+        final status = DataUtils.getStatusFromItemCodeAndValue(
+          value: recentStat.getLevelFromRegion(region),
+          itemCode: ItemCode.PM10,
+        );
+        return Scaffold(
+          drawer: MainDrawer(
+            selectedRegion: region,
+            onRegionTab: (String region) {
+              setState(() {
+                this.region = region;
+              });
+              Navigator.of(context).pop();
+            },
+            darkColor: status.darkColor,
+            lightColor: status.lightColor,
+          ),
+          // backgroundColor: primaryColor,
+          body: Container(
+            color: status.primaryColor,
+            child: CustomScrollView(
+              controller: scrollController,
+              slivers: [
+                MainAppBar(
+                  isExpanded: isExpanded,
+                  stat: recentStat,
+                  status: status,
+                  region: region,
+                  dateTime: recentStat.dataTime,
                 ),
-              ));
-        });
+                SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        height: 160,
+                        child: CategoryCard(
+                          region: region,
+                          darkColor: status.darkColor,
+                          lightColor: status.lightColor,
+                        ),
+                      ),
+                      const SizedBox(
+                        height: 16,
+                      ),
+                      ...ItemCode.values.map((itemCode) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: HourlyCard(
+                            region: region,
+                            darkColor: status.darkColor,
+                            lightColor: status.lightColor,
+                            itemCode: itemCode,
+                          ),
+                        );
+                      }).toList(),
+                      const SizedBox(
+                        height: 16,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }
